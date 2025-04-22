@@ -59,6 +59,11 @@ public class PostService {
         postRequest.setImageUrl(imageUrl);
         Post userPost = convertPostDTOToEntity(postRequest,user);
         Post savedPost = postRepository.save(userPost);
+        //reset the redis cache
+        List<String> keysToResetFromRedis = new ArrayList<>();
+        keysToResetFromRedis.add("posts_till_page_*");
+        keysToResetFromRedis.add("totalPostPages");
+        redisService.resetCacheOfKeys(keysToResetFromRedis);
         return convertPostEntityToDTO(savedPost,user);
     }
 

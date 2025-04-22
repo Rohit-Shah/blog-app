@@ -17,11 +17,11 @@ import java.util.concurrent.TimeUnit;
 public class RedisService {
 
     @Autowired
-    private RedisTemplate redisTemplate;
+    private RedisTemplate<String, String> redisTemplate;
 
     public <T> T get(String key,TypeReference<T> typeReference){
         try{
-            String cachedData = (String) redisTemplate.opsForValue().get(key);
+            String cachedData = redisTemplate.opsForValue().get(key);
             if(cachedData != null){
                 ObjectMapper mapper = new ObjectMapper();
                 mapper.registerModule(new JavaTimeModule());
@@ -46,6 +46,12 @@ public class RedisService {
         }
         catch (Exception e){
             log.error("Exception occurred : " + e.getMessage());
+        }
+    }
+
+    public void resetCacheOfKeys(List<String> keys){
+        for(String key : keys){
+            redisTemplate.delete(key);
         }
     }
 }
