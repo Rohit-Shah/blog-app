@@ -159,6 +159,7 @@ public class PostService {
         postDTO.setTitle(post.getTitle());
         postDTO.setContent(post.getContent());
         postDTO.setAuthorId(user.getUserId().toString());
+        postDTO.setAuthorName(user.getUsername());
         postDTO.setCreatedAt(post.getCreatedAt());
         postDTO.setUpdatedAt(post.getUpdatedAt());
         postDTO.setImageUrl(post.getImageUrl());

@@ -12,6 +12,7 @@ public class PostDTO {
     private String content;
     private String imageUrl;
     private String authorId;
+    private String authorName;
     private Instant createdAt;
     private Instant updatedAt;
     private Long likeCount;
