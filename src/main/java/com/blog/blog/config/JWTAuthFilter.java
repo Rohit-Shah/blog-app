@@ -1,9 +1,7 @@
 package com.blog.blog.config;
 
-import com.blog.blog.Exceptions.JWTValidationException;
-import com.blog.blog.entity.User;
-import com.blog.blog.service.CustomUserDetailsService;
-import com.blog.blog.service.JWTService;
+import com.blog.blog.service.AuthService.CustomUserDetailsService;
+import com.blog.blog.service.AuthService.JWTService;
 import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;

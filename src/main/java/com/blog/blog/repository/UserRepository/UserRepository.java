@@ -1,0 +1,14 @@
+package com.blog.blog.repository.UserRepository;
+
+import com.blog.blog.entity.UserEntity.User;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+public interface UserRepository extends JpaRepository<User, Long> {
+
+    @Query("SELECT u from User u JOIN FETCH u.roles where u.username=:username")
+    User findUserByUsername(@Param("username") String username);
+    User findUserByEmail(String email);
+    User findUserByUserId(Long userId);
+}

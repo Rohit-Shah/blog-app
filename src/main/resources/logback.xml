@@ -5,6 +5,7 @@
         </encoder>
     </appender>
     <appender name="myFileAppender" class="ch.qos.logback.core.FileAppender">
+        <immediateFlush>true</immediateFlush>
         <file>
             out.log
         </file>
