@@ -11,5 +11,5 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     Optional<Post> findById(Long postId);
 
     Optional<Post> findPostByPostId(Long postId);
-    List<Post> findPostByAuthorId(Long authorId);
+    List<Post> findPostByUserId(Long authorId);
 }

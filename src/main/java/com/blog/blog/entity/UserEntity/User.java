@@ -1,10 +1,13 @@
 package com.blog.blog.entity.UserEntity;
+import com.blog.blog.entity.PostEntity.Post;
 import jakarta.persistence.*;
 import lombok.Data;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Data
 @Entity
@@ -29,9 +32,7 @@ public class User {
             inverseJoinColumns = @JoinColumn(name = "role_id")
     )
     private List<Role> roles = new ArrayList<>();
-
     private String refreshToken;
-
     private Instant refreshTokenExpTime;
     private Long followerCount;
     private Long followingCount;

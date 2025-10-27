@@ -16,7 +16,7 @@ public class Post {
     private Long postId;
     private String title;
     private String content;
-    private Long authorId;
+    private Long userId;
     private String imageUrl;
     @CreationTimestamp
     private Instant createdAt;
