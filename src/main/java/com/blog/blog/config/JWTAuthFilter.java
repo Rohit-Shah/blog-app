@@ -1,20 +1,26 @@
 package com.blog.blog.config;
 
+import com.blog.blog.Exceptions.JWTValidationException;
 import com.blog.blog.service.AuthService.CustomUserDetailsService;
 import com.blog.blog.service.AuthService.JWTService;
 import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.MalformedJwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.nio.charset.MalformedInputException;
+import java.security.SignatureException;
 
 //now create the filter
 @Component
@@ -56,15 +62,22 @@ public class JWTAuthFilter extends OncePerRequestFilter {
                     SecurityContextHolder.getContext().setAuthentication(authToken);
                 }
             }
-        }catch (ExpiredJwtException e){
+        }catch (JwtException e){
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.setContentType("application/json");
             response.getWriter().write("JWT token expired !! Generate a new token");
-        }catch (Exception e){
+            return;
+        }catch (JWTValidationException e){
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType("application/json");
+            response.getWriter().write(e.getMessage());
+            return;
+        }
+        catch (Exception e){
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             response.setContentType("application/json");
             response.getWriter().write("Some error occurred -> " + e.getMessage());
-            throw e;
+            return;
         }
         // now continue the filter chain
         filterChain.doFilter(request,response);

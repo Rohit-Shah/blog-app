@@ -1,6 +1,6 @@
 package com.blog.blog.scheduler;
 
-import com.blog.blog.service.MessagingService.EmailService;
+import com.blog.blog.service.MessagingService.EmailService.EmailService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -12,6 +12,6 @@ public class UserScheduler {
 
 //    @Scheduled(cron = "0 * * ? * *")
     public void sendBlogUpdatesToSubscribers(){
-        emailService.sendEmail("email@gmail.com","Scheduled message","This message was scheduled to be delivered at 11:45");
+        emailService.sendSimpleEmail("email@gmail.com","Scheduled message","This message was scheduled to be delivered at 11:45");
     }
 }

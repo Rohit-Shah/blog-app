@@ -29,7 +29,6 @@ public class UserService {
     public UserDTO getUserProfileDetails(String userIdStr) {
         Long userId = Long.parseLong(userIdStr);
         try{
-
             String userKey = "User_" + userIdStr;
             TypeReference<User> userTypeReference = new TypeReference<User>() {};
             if(redisService.get(userKey,userTypeReference) != null){
@@ -53,8 +52,6 @@ public class UserService {
         UserDTO userDTO = new UserDTO();
         userDTO.setUsername(user.getUsername());
         userDTO.setEmail(user.getEmail());
-        Long userPostCount = (long) postService.getAllUserPosts(new UserPrincipal(user)).size();
-        userDTO.setTotalPosts(userPostCount);
         userDTO.setTotalFollowers(user.getFollowerCount());
         userDTO.setTotalFollowing(user.getFollowingCount());
         return userDTO;

@@ -10,6 +10,7 @@ import com.blog.blog.entity.UserEntity.Role;
 import com.blog.blog.entity.UserEntity.User;
 import com.blog.blog.repository.UserRepository.RoleRepository;
 import com.blog.blog.repository.UserRepository.UserRepository;
+import io.jsonwebtoken.ExpiredJwtException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
@@ -106,26 +107,29 @@ public class AuthService {
         try{
             Authentication authUser = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(username,password));
             if(authUser.isAuthenticated()){
+                User user = userRepository.findUserByUsername(username);
                 accessToken = jwtService.generateAccessToken(username);
                 refreshToken = jwtService.generateRefreshToken(username);
                 AuthResponse loggedInUser = new AuthResponse();
-                loggedInUser.setUsername(userData.getUsername());
                 loggedInUser.setAccessToken(accessToken);
                 loggedInUser.setRefreshToken(refreshToken);
+                UserDTO userDTO = new UserDTO();
+                userDTO.setUsername(user.getUsername());
+                userDTO.setEmail(user.getEmail());
+                userDTO.setUserId(user.getUserId());
+                loggedInUser.setUser(userDTO);
                 // save the refresh token in the db
-                User user = userRepository.findUserByUsername(username);
                 user.setRefreshToken(refreshToken);
                 userRepository.save(user);
                 return loggedInUser;
             }
-        }catch (BadCredentialsException e){
+        } catch (BadCredentialsException e){
             throw new AuthenticationException("Invalid credentials");
         }
         throw new UsernameNotFoundException("No user found for the given username");
     }
 
     public String generateNewAccessToken(String refreshToken) {
-        refreshToken = refreshToken.trim();
         String username = jwtService.extractUsername(refreshToken);
         UserDetails userDetails = userDetailsService.loadUserByUsername(username);
         if(userDetails == null){

@@ -3,6 +3,7 @@ package com.blog.blog.service.PostService;
 import com.blog.blog.DTO.PostRequest.PostDTO;
 import com.blog.blog.Exceptions.PostNotFoundException;
 import com.blog.blog.Request.PaginationRequest;
+import com.blog.blog.config.AppProperties;
 import com.blog.blog.entity.PostEntity.Bookmark;
 import com.blog.blog.entity.PostEntity.Post;
 import com.blog.blog.entity.PostEntity.PostReaction;
@@ -21,67 +22,96 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.support.PageableUtils;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 @Service
 @Slf4j
 public class PostService {
-
     @Autowired
     private PostRepository postRepository;
-
     @Autowired
     private UserRepository userRepository;
-
     @Autowired
     private FileService fileService;
-
     @Autowired
     private PostReactionRepository postReactionRepository;
-
     @Autowired
     private RedisService redisService;
-
     @Autowired
     private BookmarkRepository bookmarkRepository;
+    @Autowired
+    private AppProperties appProperties;
 
-//    private static final Logger logger = LoggerFactory.getLogger(PostService.class);
-
-    @Transactional
-    public PostDTO savePost(@AuthenticationPrincipal UserPrincipal userPrincipal, PostDTO postRequest, MultipartFile file) {
+    public CompletableFuture<PostDTO> savePost(@AuthenticationPrincipal UserPrincipal userPrincipal, PostDTO postRequest, MultipartFile file) throws ExecutionException, InterruptedException, IOException {
         User user = userPrincipal.getUser();
         if(user == null){
             throw new UsernameNotFoundException("No such user found");
         }
-        postRequest.setAuthorId(user.getUserId().toString());
-        String imageUrl = null;
+        Post currPost = convertPostDTOToEntity(postRequest,user);
+        //save post
+        CompletableFuture<Post> initialSavePostFuture = CompletableFuture.supplyAsync(() -> postRepository.save(currPost));
+        //upload file
+        CompletableFuture<String> imageUploadFuture = null;
         if(file != null){
-            imageUrl = fileService.uploadFile(file);
+            byte[] imageBytes = file.getBytes();
+            imageUploadFuture = fileService.uploadFile(imageBytes);
         }
-        postRequest.setImageUrl(imageUrl);
-        Post userPost = convertPostDTOToEntity(postRequest,user);
-        Post savedPost = postRepository.save(userPost);
-        //reset the redis cache
-        List<String> keysToResetFromRedis = new ArrayList<>();
-        keysToResetFromRedis.add("posts_till_page_*");
-        keysToResetFromRedis.add("totalPostPages");
-        redisService.resetCacheOfKeys(keysToResetFromRedis);
+        CompletableFuture<String> safeImageUploadFuture =  imageUploadFuture != null ? imageUploadFuture.exceptionally(ex -> {
+            log.error("Error uploading image for user with userId : {} ",user.getUserId());
+            return null;
+        }) : null;
+        //once both are done combine them
+        if(safeImageUploadFuture == null){
+            return initialSavePostFuture.thenApply(savedPost -> convertPostEntityToDTO(savedPost,user));
+        }
+        return initialSavePostFuture.thenCombine(safeImageUploadFuture,(savedPost, uploadedImageUrl) -> {
+            return updatePostWithImageDetails(savedPost,uploadedImageUrl,user);
+        }).thenApply(postDTO -> postDTO);
+    }
+
+    @Transactional
+    private PostDTO updatePostWithImageDetails(Post savedPost,String imageUrl,User user){
+        if(imageUrl != null){
+            savedPost.setImageUrl(imageUrl);
+            postRepository.save(savedPost);
+        }
         return convertPostEntityToDTO(savedPost,user);
     }
 
-    public List<PostDTO> getAllUserPosts(UserPrincipal userPrincipal) {
-        List<PostDTO> allUserPosts = new ArrayList<>();
+    public Map<String,Object> getAllUserPosts(UserPrincipal userPrincipal,int page,int size) {
         User user = userPrincipal.getUser();
-        List<Post> allUserPostsFromDB = postRepository.findPostByUserId(user.getUserId());
-        return allUserPostsFromDB.stream().map(post -> convertPostEntityToDTO(post,user)).collect(Collectors.toList());
+        Map<String,Object> response = new HashMap<>();
+        Pageable pageable = PageRequest.of(page-1,size);
+        TypeReference<List<PostDTO>> typeRef = new TypeReference<List<PostDTO>>() {};
+        if(redisService.get(user.getUserId() + "_posts_till_page_" + page + "_" + size,typeRef) != null){
+            List<PostDTO> postDTOList = redisService.get(user.getUserId() + "_posts_till_page_" + page + "_" + size, new TypeReference<>() {
+            });
+            int totalPages = redisService.get(user.getUserId() + "_userTotalPostPages", new TypeReference<Integer>() {});
+            response.put("posts",postDTOList);
+            response.put("pages",totalPages);
+        }
+        else{
+            Page<Post> pagePosts = postRepository.findAllUserPosts(pageable,user.getUserId());
+            List<PostDTO> postDTOList = pagePosts.stream().map(post -> convertPostEntityToDTO(post, user)).toList();
+            redisService.set(user.getUserId() + "_posts_till_page_" + page + "_" + size,postDTOList,200l);
+            redisService.set(user.getUserId() + "_userTotalPostPages",pagePosts.getTotalPages(),200l);
+            response.put("posts",postDTOList);
+            response.put("pages",pagePosts.getTotalPages());
+        }
+        return response;
+
     }
 
     public PostDTO getPostByPostId(UserPrincipal userPrincipal, Long postId) {
@@ -93,7 +123,7 @@ public class PostService {
         return convertPostEntityToDTO(userPost.get(),user);
     }
 
-    public PostDTO updatePostByPostId(UserPrincipal userPrincipal, Long postId,PostDTO updatedPost) {
+    public CompletableFuture<PostDTO> updatePostByPostId(UserPrincipal userPrincipal, Long postId,PostDTO updatedPost,MultipartFile file) throws IOException {
         //check if the given post belong to the logged-in user or not
         User user = userPrincipal.getUser();
         Optional<Post> currPost = postRepository.findPostByPostId(postId);
@@ -106,8 +136,22 @@ public class PostService {
         }
         dbPost.setTitle(updatedPost.getTitle().isEmpty() ? dbPost.getTitle() : updatedPost.getTitle());
         dbPost.setContent(updatedPost.getContent().isEmpty() ? dbPost.getContent() : updatedPost.getContent());
-        Post updatedSavedPost = postRepository.save(dbPost);
-        return convertPostEntityToDTO(updatedSavedPost,user);
+        CompletableFuture<Post> initialSavePost = CompletableFuture.supplyAsync(() -> postRepository.save(dbPost));
+        CompletableFuture<String> imageCompletableFuture = null;
+        if(file != null){
+            byte[] imageBytes = file.getBytes();
+            imageCompletableFuture = fileService.uploadFile(imageBytes);
+        }
+        CompletableFuture<String> safeImageUploadFuture = imageCompletableFuture != null ? imageCompletableFuture.exceptionally(ex -> {
+            log.error("Error while updating image for user with userId {}",user.getUserId());
+            return null;
+        }) : null;
+        if(safeImageUploadFuture == null){
+            return initialSavePost.thenApply(post -> convertPostEntityToDTO(post,user));
+        }
+        return initialSavePost.thenCombine(safeImageUploadFuture, (post,imageUrl) -> {
+            return updatePostWithImageDetails(post,imageUrl,user);
+        }).thenApply(postDTO -> postDTO);
     }
 
     public String deletePostByPostId(UserPrincipal userPrincipal, Long postId) {
@@ -125,29 +169,80 @@ public class PostService {
         return message;
     }
 
-    @Transactional
     public Map<String,Object> getAllPosts(UserPrincipal userPrincipal,int page,int size) {
         User user = userPrincipal.getUser();
         Map<String,Object> response = new HashMap<>();
         Pageable pageable = PageRequest.of(page-1,size);
         TypeReference<List<PostDTO>> typeRef = new TypeReference<List<PostDTO>>() {};
-        if(redisService.get(user.getUserId() + "posts_till_page_" + page + "_" + size,typeRef) != null){
+        if(redisService.get("posts_till_page_" + page + "_" + size,typeRef) != null){
             List<PostDTO> postDTOList = redisService.get("posts_till_page_" + page + "_" + size, new TypeReference<>() {
             });
             int totalPages = redisService.get("totalPostPages", new TypeReference<Integer>() {});
             response.put("posts",postDTOList);
             response.put("pages",totalPages);
-            return response;
         }
         else{
             Page<Post> pagePosts = postRepository.findAll(pageable);
             List<PostDTO> postDTOList = pagePosts.stream().map(post -> convertPostEntityToDTO(post, user)).toList();
-            redisService.set(user.getUserId() + "posts_till_page_"+page+"_"+size,postDTOList,200l);
-            redisService.set(user.getUserId() + "totalPostPages",pagePosts.getTotalPages(),200l);
+            redisService.set("posts_till_page_" + page + "_" + size,postDTOList,200l);
+            redisService.set("totalPostPages",pagePosts.getTotalPages(),200l);
             response.put("posts",postDTOList);
             response.put("pages",pagePosts.getTotalPages());
-            return response;
         }
+        return response;
+    }
+
+    public String bookmarkPost(UserPrincipal userPrincipal, Long postId) {
+        User currUser = userPrincipal.getUser();
+        Post post = postRepository.findPostByPostId(postId).orElseThrow(() -> new PostNotFoundException("No such post found"));
+        Bookmark newBookmark = new Bookmark();
+        newBookmark.setPost(post);
+        newBookmark.setUser(currUser);
+        bookmarkRepository.save(newBookmark);
+        return "Post bookmarked successfully";
+    }
+
+    public List<PostDTO> getAllBookmarkedPosts(UserPrincipal userPrincipal, PaginationRequest paginationRequest) {
+        User user = userPrincipal.getUser();
+        final Pageable pageable = PageRequestUtil.getPageableRequest(paginationRequest);
+        final Page<Post> postPages = bookmarkRepository.findBookmarkedPostByUser(user,pageable);
+        List<PostDTO> allBookmarkedPostDTOList = postPages.stream()
+                .map((post) -> {
+                    return convertPostEntityToDTO(post,user);
+                } ).toList();
+        return allBookmarkedPostDTOList;
+    }
+
+    public Map<String,List<PostDTO>> getAllProfilePosts(UserPrincipal userPrincipal,Pageable pageable) throws ExecutionException, InterruptedException {
+        //all recent posts
+        User currUser = userPrincipal.getUser();
+        CompletableFuture<List<PostDTO>> recentPostFuture = this.getAllRecentPosts(currUser,pageable);
+        //all popular posts
+        CompletableFuture<List<PostDTO>> popularPostFuture = this.getAllPopularPosts(currUser,pageable);
+
+        CompletableFuture.allOf(recentPostFuture,popularPostFuture);
+        return Map.of("recentPosts",recentPostFuture.get(),"popularPosts",popularPostFuture.get());
+    }
+
+    @Async
+    private CompletableFuture<List<PostDTO>> getAllRecentPosts(User user,Pageable pageable) throws ExecutionException,InterruptedException{
+        Page<Post> recentPagePosts = postRepository.findPostOrderByCreatedAtDesc(pageable);
+        return CompletableFuture.completedFuture(recentPagePosts).thenApply(pagePost -> pagePost.stream().map(post -> this.convertPostEntityToDTO(post,user)).toList());
+    }
+
+    @Async
+    private CompletableFuture<List<PostDTO>> getAllPopularPosts(User user,Pageable pageable){
+        Page<Post> popularPagePosts = postRepository.findPopularPosts(pageable);
+        return CompletableFuture.completedFuture(popularPagePosts).thenApply(pagePost -> pagePost.stream().map(post -> this.convertPostEntityToDTO(post,user)).toList());
+    }
+
+    public List<PostDTO> getRecentPostsForUsers(Long userId, List<Long> followingIds, Instant cutoff){
+        User currUser = userRepository.findById(userId).orElseThrow(() -> new UsernameNotFoundException("No user found"));
+        int maxCap = appProperties.getMaxCuratedPosts();
+        Pageable maxCuratedPostPageable = PageRequest.of(0,Math.min(maxCap, appProperties.getPostsPerFollowing()) * followingIds.size());
+        Page<Post> recentsPostPage = postRepository.findRecentPostsForUsers(followingIds,cutoff,maxCuratedPostPageable);
+        List<PostDTO> recentUserPostsDTOList = recentsPostPage.stream().map(post -> convertPostEntityToDTO(post,currUser)).collect(Collectors.toList());
+        return recentUserPostsDTOList;
     }
 
     private Post convertPostDTOToEntity(PostDTO postDTO,User user){
@@ -174,6 +269,7 @@ public class PostService {
         long postDislikeCount = postReactionRepository.countPostDislikes(post.getPostId());
         postDTO.setLikeCount(postLikeCount);
         postDTO.setDislikeCount(postDislikeCount);
+        postDTO.setExcerpt(getPostExcerpt(post.getContent()));
 
         //check if user has reacted to this post or not
         Optional<PostReaction.ReactionType> userPostReactionOptional = postReactionRepository.findUserReaction(user.getUserId(),post.getPostId());
@@ -195,24 +291,8 @@ public class PostService {
         return postDTO;
     }
 
-    public String bookmarkPost(UserPrincipal userPrincipal, Long postId) {
-        User currUser = userPrincipal.getUser();
-        Post post = postRepository.findPostByPostId(postId).orElseThrow(() -> new PostNotFoundException("No such post found"));
-        Bookmark newBookmark = new Bookmark();
-        newBookmark.setPost(post);
-        newBookmark.setUser(currUser);
-        bookmarkRepository.save(newBookmark);
-        return "Post bookmarked successfully";
-    }
-
-    public List<PostDTO> getAllBookmarkedPosts(UserPrincipal userPrincipal, PaginationRequest paginationRequest) {
-        User user = userPrincipal.getUser();
-        final Pageable pageable = PageRequestUtil.getPageableRequest(paginationRequest);
-        final Page<Post> postPages = bookmarkRepository.findBookmarkedPostByUser(user,pageable);
-        List<PostDTO> allBookmarkedPostDTOList = postPages.stream()
-                .map((post) -> {
-                    return convertPostEntityToDTO(post,user);
-                } ).toList();
-        return allBookmarkedPostDTOList;
+    private static String getPostExcerpt(String message){
+        if(message == null) return message;
+        return message.length() < 150 ? message :message.substring(0,150) + "...";
     }
 }

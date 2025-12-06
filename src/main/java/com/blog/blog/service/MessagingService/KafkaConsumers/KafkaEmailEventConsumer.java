@@ -1,7 +1,7 @@
 package com.blog.blog.service.MessagingService.KafkaConsumers;
 
 import com.blog.blog.DTO.MessagingEntity.EmailEvent;
-import com.blog.blog.service.MessagingService.EmailService;
+import com.blog.blog.service.MessagingService.EmailService.EmailService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.annotation.KafkaListener;

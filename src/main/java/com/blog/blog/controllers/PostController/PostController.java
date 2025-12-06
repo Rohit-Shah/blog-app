@@ -4,7 +4,6 @@ import com.blog.blog.DTO.PostRequest.PostDTO;
 import com.blog.blog.Exceptions.PostNotFoundException;
 import com.blog.blog.Request.PaginationRequest;
 import com.blog.blog.Response.ApiResponse;
-import com.blog.blog.entity.PostEntity.Post;
 import com.blog.blog.entity.UserEntity.UserPrincipal;
 import com.blog.blog.service.FileService.FileService;
 import com.blog.blog.service.PostService.PostService;
@@ -21,6 +20,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 @RestController
 @RequestMapping("/post")
@@ -34,7 +35,7 @@ public class PostController {
     @PostMapping("/add-post")
     public ResponseEntity<ApiResponse> addPost(@AuthenticationPrincipal UserPrincipal userPrincipal, @ModelAttribute PostDTO postRequest, @RequestParam(value = "file",required = false)MultipartFile file){
         try{
-            PostDTO savedPost = postService.savePost(userPrincipal,postRequest,file);
+            CompletableFuture<PostDTO> savedPost = postService.savePost(userPrincipal,postRequest,file);
             ApiResponse successResponse = new ApiResponse("Post saved successfully",true,savedPost);
             return ResponseEntity.status(HttpStatus.OK).body(successResponse);
         }catch (UsernameNotFoundException e){
@@ -47,10 +48,10 @@ public class PostController {
     }
 
     @GetMapping("/get-all-user-posts")
-    public ResponseEntity<ApiResponse> getAllUserPosts(@AuthenticationPrincipal UserPrincipal userPrincipal){
+    public ResponseEntity<ApiResponse> getAllUserPosts(@AuthenticationPrincipal UserPrincipal userPrincipal,int page,int size){
         try{
-            List<PostDTO> userPosts = postService.getAllUserPosts(userPrincipal);
-            ApiResponse successResponse = new ApiResponse("All user posts",true,userPosts);
+            Map<String, Object> allUserPosts = postService.getAllUserPosts(userPrincipal, page, size);
+            ApiResponse successResponse = new ApiResponse("All user posts",true,allUserPosts);
             return ResponseEntity.status(HttpStatus.OK).body(successResponse);
         }catch (UsernameNotFoundException e){
             ApiResponse errorResponse = new ApiResponse(e.getMessage(),false,null);
@@ -77,9 +78,9 @@ public class PostController {
     }
 
     @PutMapping("/update-post/{postId}")
-    public ResponseEntity<ApiResponse> updatePostByPostId(@AuthenticationPrincipal UserPrincipal userPrincipal, @PathVariable Long postId,@RequestBody PostDTO newPost){
+    public ResponseEntity<ApiResponse> updatePostByPostId(@AuthenticationPrincipal UserPrincipal userPrincipal, @PathVariable Long postId,@ModelAttribute PostDTO newPostRequest,@RequestParam(value = "file",required = false)MultipartFile file){
         try{
-            PostDTO updatedPost = postService.updatePostByPostId(userPrincipal,postId,newPost);
+            CompletableFuture<PostDTO> updatedPost = postService.updatePostByPostId(userPrincipal,postId,newPostRequest,file);
             ApiResponse successResponse = new ApiResponse("Post updated successfully",true,updatedPost);
             return ResponseEntity.status(HttpStatus.OK).body(successResponse);
         }catch (PostNotFoundException e){
@@ -108,8 +109,8 @@ public class PostController {
 
     @GetMapping("/get-all-posts")
     public ResponseEntity<ApiResponse> getAllPosts(@AuthenticationPrincipal UserPrincipal userPrincipal,
-                                                   @RequestParam(defaultValue = "1") int page,
-                                                    @RequestParam(defaultValue = "6") int size){
+                                                   @RequestParam(defaultValue = "0") int page,
+                                                    @RequestParam(defaultValue = "10") int size){
         try{
             Map<String,Object> allPosts = postService.getAllPosts(userPrincipal,page,size);
             ApiResponse successResponse = new ApiResponse("All Posts",true,allPosts);
@@ -154,6 +155,20 @@ public class PostController {
             ApiResponse errorResponse = new ApiResponse(e.getMessage(),false,null);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
         }
+    }
+
+    @GetMapping("/get-profile-posts")
+    public ResponseEntity<ApiResponse> getRecentPosts(@AuthenticationPrincipal UserPrincipal userPrincipal,
+                                                      @PageableDefault (page = 0,size = 10,sort = "id",direction = Sort.Direction.DESC) Pageable pageable){
+        //all profile posts consists of recent posts and popular posts
+        Map<String,List<PostDTO>> allProfilePosts = null;
+        try {
+            allProfilePosts = postService.getAllProfilePosts(userPrincipal,pageable);
+        } catch (ExecutionException | InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+        ApiResponse successResponse = new ApiResponse("All profile posts ",true,allProfilePosts);
+        return ResponseEntity.status(HttpStatus.OK).body(successResponse);
     }
 
 }

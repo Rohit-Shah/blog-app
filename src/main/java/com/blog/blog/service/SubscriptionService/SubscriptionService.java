@@ -2,7 +2,7 @@ package com.blog.blog.service.SubscriptionService;
 
 import com.blog.blog.DTO.MessagingEntity.EmailEvent;
 import com.blog.blog.constants.MessagingConstants.KafkaEvents;
-import com.blog.blog.service.MessagingService.EmailService;
+import com.blog.blog.service.MessagingService.EmailService.EmailService;
 import com.blog.blog.service.MessagingService.KafkaEventPublisher;
 import com.blog.blog.entity.SubscriptionEntity.Subscription;
 import com.blog.blog.entity.UserEntity.User;
@@ -43,8 +43,8 @@ public class SubscriptionService {
         subscription.setSubscriber(subscriber);
         subscription.setSubscribedTo(toBeSubscribedUser);
         subscriptionRepository.save(subscription);
-        EmailEvent emailEventPayload = new EmailEvent("USER_SUBSCRIPTION","New Subscriber","Hurray!! You got a new Subscriber." + subscriber.getUsername() + " subscribed you.",toBeSubscribedUser.getEmail());
-        kafkaEventPublisher.sendMessage(KafkaEvents.EMAIL_NOTIFICATIONS.getTopic(),emailEventPayload);
+//        EmailEvent emailEventPayload = new EmailEvent("USER_SUBSCRIPTION","New Subscriber","Hurray!! You got a new Subscriber." + subscriber.getUsername() + " subscribed you.",toBeSubscribedUser.getEmail());
+//        kafkaEventPublisher.sendMessage(KafkaEvents.EMAIL_NOTIFICATIONS.getTopic(),emailEventPayload);
         return "Subscription added successfully";
     }
 

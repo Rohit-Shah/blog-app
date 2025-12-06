@@ -8,6 +8,7 @@ import java.time.Instant;
 public class PostDTO {
     private String postId;
     private String title;
+    private String excerpt;
     private String content;
     private String imageUrl;
     private String authorId;

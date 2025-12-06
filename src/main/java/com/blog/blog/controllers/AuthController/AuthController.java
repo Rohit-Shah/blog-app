@@ -13,6 +13,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.*;
 
+import javax.naming.AuthenticationException;
+import java.util.Map;
+
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
@@ -38,23 +41,16 @@ public class AuthController {
 
     //login user
     @PostMapping("/login-user")
-    public ResponseEntity<ApiResponse> loginUser(@RequestBody UserLoginRequest userData){
-        try{
-            AuthResponse loggedInUser = authService.loginUser(userData);
-            ApiResponse successResponse = new ApiResponse("User login successful",true,loggedInUser);
-            return ResponseEntity.status(HttpStatus.OK).body(successResponse);
-        }catch (UsernameNotFoundException e){
-            ApiResponse errorResponse = new ApiResponse("User not found",false,null);
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
-        }catch (Exception e){
-            ApiResponse errorResponse = new ApiResponse("Some error Occurred",false,null);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
-        }
+    public ResponseEntity<ApiResponse> loginUser(@RequestBody UserLoginRequest userData) throws AuthenticationException {
+        AuthResponse loggedInUser = authService.loginUser(userData);
+        ApiResponse successResponse = new ApiResponse("User login successful",true,loggedInUser);
+        return ResponseEntity.status(HttpStatus.OK).body(successResponse);
     }
 
     @PostMapping("/refresh-access-token")
-    public ResponseEntity<ApiResponse> refreshAccessToken(@RequestBody String refreshToken){
+    public ResponseEntity<ApiResponse> refreshAccessToken(@RequestBody Map<String,String> request){
         try{
+            String refreshToken = request.get("refreshToken");
             String newAccessToken = authService.generateNewAccessToken(refreshToken);
             ApiResponse successResponse = new ApiResponse("Access token refreshed",true,newAccessToken);
             return ResponseEntity.status(HttpStatus.OK).body(successResponse);

@@ -1,6 +1,6 @@
 package com.blog.blog.service;
 
-import com.blog.blog.service.MessagingService.EmailService;
+import com.blog.blog.service.MessagingService.EmailService.EmailService;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,6 +14,6 @@ public class EmailServiceTest {
     @Test
     @Disabled
     void testSendMail(){
-        emailService.sendEmail("email@gmail.com","Testing Java mail sender","Hi , Successfully sent my first email using java mail sender");
+        emailService.sendSimpleEmail("email@gmail.com","Testing Java mail sender","Hi , Successfully sent my first email using java mail sender");
     }
 }

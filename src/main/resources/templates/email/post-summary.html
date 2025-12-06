@@ -1,0 +1,20 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8"/>
+    <title>Weekly Digest</title>
+</head>
+<body>
+<p>Hi <span th:text="${user.username}">User</span>,</p>
+<p>Here's your weekly recap:</p>
+<ul>
+    <li th:each="post : ${posts}">
+        <strong th:text="${post.title}">Title</strong><br/>
+        <small th:text="${#dates.format(post.createdAt, 'dd MMM yyyy HH:mm')}"></small><br/>
+        <p th:text="${post.excerpt}"></p>
+        <a th:href="${baseUrl}">Read more</a>
+    </li>
+</ul>
+<p>— Your App</p>
+</body>
+</html>

@@ -3,6 +3,8 @@ package com.blog.blog.service.AuthService;
 import com.blog.blog.Exceptions.JWTValidationException;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
@@ -15,7 +17,7 @@ import java.util.function.Function;
 public class JWTService {
 
     private static final String SECRET_KEY = "9382E94A5FAAEFF4812B7D647214C9382E94A5FAAEFF4812B7D647214C";
-    private static final long ACCESS_TOKEN_EXPIRATION = 15 * 60 * 1000; // 15 minutes
+    private static final long ACCESS_TOKEN_EXPIRATION = 15 * 60 * 1000; // 15 mins
     private static final long REFRESH_TOKEN_EXPIRATION = 7 * 24 * 60 * 60 * 1000; // 7 days
 
     public String extractUsername(String token) {
@@ -29,7 +31,12 @@ public class JWTService {
 
     private Claims extractAllClaims(String token){
         try{
-            return Jwts.parser().verifyWith(getSigningKey()).build().parseSignedClaims(token).getPayload();
+            return Jwts.parser()
+                    .verifyWith(getSigningKey())
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+
         }catch (Exception e){
             throw new JWTValidationException(e.getMessage());
         }
@@ -61,11 +68,12 @@ public class JWTService {
                 .subject(username)
                 .issuedAt(new Date(System.currentTimeMillis()))
                 .expiration(new Date( System.currentTimeMillis() + expirationTime))
-                .signWith(getSigningKey()).compact();
+                .signWith(getSigningKey(), SignatureAlgorithm.HS256).compact();
     }
 
     private SecretKey getSigningKey(){
-        return Keys.hmacShaKeyFor(SECRET_KEY.getBytes());
+        byte[] keyBytes = io.jsonwebtoken.io.Decoders.BASE64.decode(SECRET_KEY);
+        return Keys.hmacShaKeyFor(keyBytes);
     }
 
 }
