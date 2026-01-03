@@ -1,6 +1,8 @@
 package com.blog.blog.entity.UserEntity;
 
+import com.blog.blog.service.AuthService.LoginAttemptService;
 import lombok.Getter;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -12,10 +14,17 @@ import java.util.stream.Collectors;
 public class UserPrincipal implements UserDetails {
 
     private User user;
+    private LoginAttemptService loginAttemptService;
 
     public UserPrincipal(User user) {
         this.user = user;
     }
+
+    public UserPrincipal(User user, LoginAttemptService loginAttemptService){
+        this.user = user;
+        this.loginAttemptService = loginAttemptService;
+    }
+
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
@@ -40,7 +49,7 @@ public class UserPrincipal implements UserDetails {
 
     @Override
     public boolean isAccountNonLocked() {
-        return UserDetails.super.isAccountNonLocked();
+        return !this.loginAttemptService.isBlocked(user.getUsername());
     }
 
     @Override

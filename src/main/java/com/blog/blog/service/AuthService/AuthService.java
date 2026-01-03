@@ -16,6 +16,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -27,6 +28,7 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 import javax.naming.AuthenticationException;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Service
@@ -46,6 +48,8 @@ public class AuthService {
     private CustomUserDetailsService userDetailsService;
     @Autowired
     private RestTemplate restTemplate;
+    @Autowired
+    private LoginAttemptService loginAttemptService;
 
     @Value("${spring.googleTokenExchangeUrl}")
     private String googleAuthTokenEndPoint;
@@ -121,9 +125,19 @@ public class AuthService {
                 // save the refresh token in the db
                 user.setRefreshToken(refreshToken);
                 userRepository.save(user);
+                loginAttemptService.loginSucceed(user.getUsername());
                 return loggedInUser;
             }
-        } catch (BadCredentialsException e){
+        }catch (LockedException e){
+            long lastAttemptTime = loginAttemptService.getUserLastLoginDetails(username);
+            long timeRemaining = 15;
+            if(lastAttemptTime != -1){
+                timeRemaining = 15 - TimeUnit.MILLISECONDS.toMinutes(System.currentTimeMillis() - lastAttemptTime);
+            }
+            throw new LockedException("Too many unsuccessful attempts !! Please try again after " + timeRemaining + " mins");
+        }
+        catch (BadCredentialsException e){
+            loginAttemptService.loginFailed(userData.getUsername());
             throw new AuthenticationException("Invalid credentials");
         }
         throw new UsernameNotFoundException("No user found for the given username");
