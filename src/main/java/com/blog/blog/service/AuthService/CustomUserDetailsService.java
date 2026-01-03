@@ -14,12 +14,14 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     @Autowired
     private UserRepository userRepository;
+    @Autowired
+    private LoginAttemptService loginAttemptService;
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         User user = userRepository.findUserByUsername(username);
         if(user != null){
-            return new UserPrincipal(user);
+            return new UserPrincipal(user,loginAttemptService);
         }
         throw new UsernameNotFoundException("No user found with the given username");
     }
