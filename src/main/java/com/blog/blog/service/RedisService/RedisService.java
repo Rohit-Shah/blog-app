@@ -10,6 +10,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -56,5 +57,28 @@ public class RedisService {
                 redisTemplate.delete(key);
             }
         }
+    }
+
+    public Long getPostViewDetails(String key){
+        return redisTemplate.opsForHyperLogLog().size(key);
+    }
+
+    public void setPostViewDetails(Long postId,Long viewerId){
+        String postViewKey = "post:view:" + postId;
+        redisTemplate.opsForHyperLogLog().add(postViewKey, viewerId.toString());
+        markPostAsDirty(postId);
+    }
+
+    public void markPostAsDirty(Long postId){
+        String dirtyKey = "post:view:dirty";
+        redisTemplate.opsForSet().add(dirtyKey,postId.toString());
+    }
+
+    public Set<String> getDirtyPosts(String dirtyKey){
+        return redisTemplate.opsForSet().members(dirtyKey);
+    }
+
+    public void clearDirtyPosts(String dirtyKey,String postId){
+        redisTemplate.opsForSet().remove(dirtyKey,postId);
     }
 }
