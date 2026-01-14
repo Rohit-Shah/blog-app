@@ -4,7 +4,6 @@ import com.blog.blog.DTO.UserRequest.UserDTO;
 import com.blog.blog.DTO.UserRequest.UserLoginRequest;
 import com.blog.blog.DTO.UserRequest.UserRegistrationRequest;
 import com.blog.blog.Exceptions.UserAlreadyExistsException;
-import com.blog.blog.Exceptions.UserLockedException;
 import com.blog.blog.Response.ApiResponse;
 import com.blog.blog.Response.AuthResponse;
 import com.blog.blog.service.AuthService.AuthService;
