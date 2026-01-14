@@ -3,6 +3,7 @@ package com.blog.blog.service.PostService;
 import com.blog.blog.DTO.PostRequest.PostDTO;
 import com.blog.blog.Exceptions.PostNotFoundException;
 import com.blog.blog.Request.PaginationRequest;
+import com.blog.blog.annotations.LogUserAction;
 import com.blog.blog.config.AppProperties;
 import com.blog.blog.entity.PostEntity.Bookmark;
 import com.blog.blog.entity.PostEntity.Post;
@@ -54,6 +55,7 @@ public class PostService {
     @Autowired
     private AppProperties appProperties;
 
+    @LogUserAction(actionType = "CREATE_POST")
     public CompletableFuture<PostDTO> savePost(@AuthenticationPrincipal UserPrincipal userPrincipal, PostDTO postRequest, MultipartFile file) throws ExecutionException, InterruptedException, IOException {
         User user = userPrincipal.getUser();
         if(user == null){
@@ -114,15 +116,26 @@ public class PostService {
 
     }
 
+    @LogUserAction(actionType = "GET_POST")
     public PostDTO getPostByPostId(UserPrincipal userPrincipal, Long postId) {
         User user = userPrincipal.getUser();
         Optional<Post> userPost = postRepository.findPostByPostId(postId);
+        updatePostViewsDetailsInRedis(user,postId);
         if(userPost.isEmpty()){
             throw new PostNotFoundException("No such post found");
         }
         return convertPostEntityToDTO(userPost.get(),user);
     }
 
+    private void updatePostViewsDetailsInRedis(User user,Long postId){
+        redisService.setPostViewDetails(postId,user.getUserId());
+    }
+
+    public void updatePostViewDetailsInDB(Long postId,Long viewCount){
+        postRepository.updateViewCountForPost(postId,viewCount);
+    }
+
+    @LogUserAction(actionType = "UPDATE_POST")
     public CompletableFuture<PostDTO> updatePostByPostId(UserPrincipal userPrincipal, Long postId,PostDTO updatedPost,MultipartFile file) throws IOException {
         //check if the given post belong to the logged-in user or not
         User user = userPrincipal.getUser();
@@ -154,6 +167,7 @@ public class PostService {
         }).thenApply(postDTO -> postDTO);
     }
 
+    @LogUserAction(actionType = "DELETE_POST")
     public String deletePostByPostId(UserPrincipal userPrincipal, Long postId) {
         User user = userPrincipal.getUser();
         Optional<Post> currPost = postRepository.findPostByPostId(postId);
@@ -264,6 +278,7 @@ public class PostService {
         postDTO.setCreatedAt(post.getCreatedAt());
         postDTO.setUpdatedAt(post.getUpdatedAt());
         postDTO.setImageUrl(post.getImageUrl());
+        postDTO.setViewCount(post.getViewCount());
         //get like and dislike count
         long postLikeCount = postReactionRepository.countPostLikes(post.getPostId());
         long postDislikeCount = postReactionRepository.countPostDislikes(post.getPostId());

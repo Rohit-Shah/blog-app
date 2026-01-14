@@ -19,4 +19,5 @@ public class PostDTO {
     private Long dislikeCount;
     private boolean likedByUser;
     private boolean dislikedByUser;
+    private Long viewCount;
 }

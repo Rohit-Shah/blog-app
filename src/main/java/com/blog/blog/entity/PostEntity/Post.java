@@ -24,4 +24,5 @@ public class Post {
     private Instant updatedAt;
     private Long likeCount;
     private Long dislikeCount;
+    private Long viewCount;
 }
