@@ -7,11 +7,14 @@ import com.cloudinary.Api;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.LockedException;
+import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import javax.naming.AuthenticationException;
+import java.nio.file.AccessDeniedException;
+import java.util.concurrent.CompletionException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -25,6 +28,21 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse> handlePostNotFoundException(PostNotFoundException e){
         ApiResponse errorResponse = new ApiResponse(e.getMessage(),false,null);
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+    }
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiResponse> handleAccessDeniedException(AccessDeniedException e){
+        ApiResponse errorResponse = new ApiResponse(e.getMessage(),false,null);
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);
+    }
+    @ExceptionHandler(AuthorizationDeniedException.class)
+    public ResponseEntity<ApiResponse> handleAuthorizationDeniedException(AuthorizationDeniedException e){
+        ApiResponse errorResponse = new ApiResponse(e.getMessage(),false,null);
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);
+    }
+    @ExceptionHandler(CompletionException.class)
+    public ResponseEntity<ApiResponse> handleCompletionException(CompletionException e){
+        ApiResponse errorResponse = new ApiResponse(e.getMessage(),false,null);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
     }
     @ExceptionHandler(CommentNotFoundException.class)
     public ResponseEntity<ApiResponse> handleCommentNotFoundException(CommentNotFoundException e){

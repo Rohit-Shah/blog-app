@@ -24,6 +24,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Async;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
@@ -136,35 +137,36 @@ public class PostService {
     }
 
     @LogUserAction(actionType = "UPDATE_POST")
-    public CompletableFuture<PostDTO> updatePostByPostId(UserPrincipal userPrincipal, Long postId,PostDTO updatedPost,MultipartFile file) throws IOException {
-        //check if the given post belong to the logged-in user or not
+    @PreAuthorize(
+            "hasPermission(#postId,'Post','CAN_EDIT_OWN_POST') or hasAuthority('CAN_EDIT_ANY_POST')"
+    )
+    public PostDTO updatePostByPostId(UserPrincipal userPrincipal, Long postId, PostDTO updatedPost, MultipartFile file) throws IOException {
+
         User user = userPrincipal.getUser();
-        Optional<Post> currPost = postRepository.findPostByPostId(postId);
-        if(currPost.isEmpty()){
-            throw new PostNotFoundException("No such post found");
+
+        Post dbPost = postRepository.findPostByPostId(postId)
+                .orElseThrow(() -> new PostNotFoundException("No such post found"));
+
+        if (updatedPost.getTitle() != null && !updatedPost.getTitle().isBlank()) {
+            dbPost.setTitle(updatedPost.getTitle());
         }
-        Post dbPost = currPost.get();
-        if(!dbPost.getUserId().equals(user.getUserId())){
-            throw new RuntimeException("You are not authorized to edit this post");
+
+        if (updatedPost.getContent() != null && !updatedPost.getContent().isBlank()) {
+            dbPost.setContent(updatedPost.getContent());
         }
-        dbPost.setTitle(updatedPost.getTitle().isEmpty() ? dbPost.getTitle() : updatedPost.getTitle());
-        dbPost.setContent(updatedPost.getContent().isEmpty() ? dbPost.getContent() : updatedPost.getContent());
-        CompletableFuture<Post> initialSavePost = CompletableFuture.supplyAsync(() -> postRepository.save(dbPost));
-        CompletableFuture<String> imageCompletableFuture = null;
-        if(file != null){
+
+        if (file != null && !file.isEmpty()) {
             byte[] imageBytes = file.getBytes();
-            imageCompletableFuture = fileService.uploadFile(imageBytes);
+            try {
+                String imageUrl = fileService.uploadFile(imageBytes).join();
+                dbPost.setImageUrl(imageUrl);
+            } catch (Exception e) {
+                log.error("Image upload failed for user {}", user.getUserId());
+            }
         }
-        CompletableFuture<String> safeImageUploadFuture = imageCompletableFuture != null ? imageCompletableFuture.exceptionally(ex -> {
-            log.error("Error while updating image for user with userId {}",user.getUserId());
-            return null;
-        }) : null;
-        if(safeImageUploadFuture == null){
-            return initialSavePost.thenApply(post -> convertPostEntityToDTO(post,user));
-        }
-        return initialSavePost.thenCombine(safeImageUploadFuture, (post,imageUrl) -> {
-            return updatePostWithImageDetails(post,imageUrl,user);
-        }).thenApply(postDTO -> postDTO);
+
+        Post savedPost = postRepository.save(dbPost);
+        return convertPostEntityToDTO(savedPost, user);
     }
 
     @LogUserAction(actionType = "DELETE_POST")
