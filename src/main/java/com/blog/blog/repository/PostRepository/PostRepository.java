@@ -40,4 +40,6 @@ public interface PostRepository extends JpaRepository<Post, Long> {
             UPDATE Post p SET p.viewCount = :viewCount where p.postId = :postId
             """)
     void updateViewCountForPost(Long postId, Long viewCount);
+    @Query("SELECT p from Post p WHERE p.postId = :postId and p.userId = :userId")
+    Post existsByPostIdAndUserId(Long postId, Long userId);
 }

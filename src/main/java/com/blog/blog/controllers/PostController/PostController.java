@@ -18,6 +18,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -78,19 +79,12 @@ public class PostController {
     }
 
     @PutMapping("/update-post/{postId}")
-    public ResponseEntity<ApiResponse> updatePostByPostId(@AuthenticationPrincipal UserPrincipal userPrincipal, @PathVariable Long postId,@ModelAttribute PostDTO newPostRequest,@RequestParam(value = "file",required = false)MultipartFile file){
-        try{
-            CompletableFuture<PostDTO> updatedPost = postService.updatePostByPostId(userPrincipal,postId,newPostRequest,file);
-            ApiResponse successResponse = new ApiResponse("Post updated successfully",true,updatedPost);
-            return ResponseEntity.status(HttpStatus.OK).body(successResponse);
-        }catch (PostNotFoundException e){
-            ApiResponse errorResponse = new ApiResponse(e.getMessage(),false,null);
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
-        } catch (Exception e){
-            ApiResponse errorResponse = new ApiResponse(e.getMessage(),false,null);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
-        }
+    public ResponseEntity<ApiResponse> updatePostByPostId(@AuthenticationPrincipal UserPrincipal userPrincipal, @PathVariable Long postId, @ModelAttribute PostDTO newPostRequest, @RequestParam(value = "file", required = false) MultipartFile file) throws IOException {
+        PostDTO updatedPost = postService.updatePostByPostId(userPrincipal, postId, newPostRequest, file);
+        ApiResponse successResponse = new ApiResponse("Post updated successfully", true, updatedPost);
+        return ResponseEntity.ok(successResponse);
     }
+
 
     @DeleteMapping("/delete-post/{postId}")
     public ResponseEntity<ApiResponse> deletePostByPostId(@AuthenticationPrincipal UserPrincipal userPrincipal, @PathVariable Long postId){
