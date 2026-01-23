@@ -170,6 +170,9 @@ public class PostService {
     }
 
     @LogUserAction(actionType = "DELETE_POST")
+    @PreAuthorize(
+            "hasPermission(#postId,'Post','CAN_DELETE_OWN_POST') or hasAuthority('CAN_DELETE_ANY_POST')"
+    )
     public String deletePostByPostId(UserPrincipal userPrincipal, Long postId) {
         User user = userPrincipal.getUser();
         Optional<Post> currPost = postRepository.findPostByPostId(postId);

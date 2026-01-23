@@ -30,15 +30,32 @@ public class CustomPermissionEvaluator implements PermissionEvaluator {
         }
         UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
         Long userId = userPrincipal.getUser().getUserId();
-        if("Post".equals(targetType)){
-            try{
-                Long postId = (Long) targetId;
-                return postRepository.existsByPostIdAndUserId(postId,userId) != null;
-            }catch (Exception e){
-                log.debug("Error while updating post - {} ",e.getMessage());
+        String perm = permission.toString();
+        switch (perm){
+            case "CAN_EDIT_OWN_POST","CAN_DELETE_OWN_POST":
+                return handlePostOwnership(targetId,userId);
+            case "CAN_EDIT_OWN_COMMENT","CAN_MODERATE_COMMENT":
+                return handleCommentOwnership(targetId,userId);
+            default:
                 return false;
-            }
         }
-        return false;
+
+    }
+
+    private boolean handlePostOwnership(Serializable targetId,Long userId){
+        if(!(targetId instanceof Long postId)){
+            return false;
+        }
+        try{
+            postId = (Long) targetId;
+            return postRepository.existsByPostIdAndUserId(postId,userId) != null;
+        }catch (Exception e){
+            log.debug("Error while handling post ownership for post id {} and user id {} ",postId,userId);
+            return false;
+        }
+    }
+
+    private boolean handleCommentOwnership(Serializable targetId,Long userId){
+        return true;
     }
 }
