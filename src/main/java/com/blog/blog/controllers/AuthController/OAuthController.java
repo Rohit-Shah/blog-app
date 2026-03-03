@@ -2,7 +2,8 @@ package com.blog.blog.controllers.AuthController;
 
 import com.blog.blog.Response.ApiResponse;
 import com.blog.blog.Response.AuthResponse;
-import com.blog.blog.service.AuthService.AuthService;
+import com.blog.blog.serviceBean.AuthService.AuthServiceBean;
+import com.blog.blog.serviceBean.OAuthProviderServiceBean.GoogleOAuthProvider;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -18,14 +19,14 @@ import java.nio.charset.StandardCharsets;
 public class OAuthController {
 
     @Autowired
-    private AuthService authService;
+    private GoogleOAuthProvider googleOAuthProvider;
     @Value("${spring.frontEndBaseUrl}")
     private String frontEndBaseUrl;
 
     @GetMapping("/auth/login/oauth2/code/google")
     public void getSessionTokensForOAuthUsers(@RequestParam("code") String authCode, HttpServletResponse response) throws IOException {
         try{
-            AuthResponse authResponse = authService.getSessionTokensForOAuthUsers(authCode);
+            AuthResponse authResponse = googleOAuthProvider.authenticate(authCode);
             String accessToken = authResponse.getAccessToken();
             String refreshToken = authResponse.getRefreshToken();
             String redirectUrl = String.format("http://127.0.0.1:5500/html/oauth-success.html?accessToken=%s&refreshToken=%s",
