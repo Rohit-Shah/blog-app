@@ -3,7 +3,7 @@ package com.blog.blog.controllers.UserController;
 import com.blog.blog.DTO.UserRequest.UserDTO;
 import com.blog.blog.Response.ApiResponse;
 import com.blog.blog.repository.UserRepository.UserRepository;
-import com.blog.blog.service.UserService.UserService;
+import com.blog.blog.service.serviceBean.UserService.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

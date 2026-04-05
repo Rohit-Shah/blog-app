@@ -2,8 +2,7 @@ package com.blog.blog.controllers.AuthController;
 
 import com.blog.blog.Response.ApiResponse;
 import com.blog.blog.Response.AuthResponse;
-import com.blog.blog.serviceBean.AuthService.AuthServiceBean;
-import com.blog.blog.serviceBean.OAuthProviderServiceBean.GoogleOAuthProvider;
+import com.blog.blog.service.serviceBean.OAuthProviderServiceBean.GoogleOAuthProvider;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;

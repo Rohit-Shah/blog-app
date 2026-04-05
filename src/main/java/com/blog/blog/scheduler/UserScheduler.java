@@ -1,6 +1,6 @@
 package com.blog.blog.scheduler;
 
-import com.blog.blog.service.MessagingService.EmailService.EmailService;
+import com.blog.blog.service.serviceBean.MessagingService.EmailService.EmailService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 

@@ -2,7 +2,7 @@ package com.blog.blog.controllers.SubscriptionController;
 
 import com.blog.blog.Response.ApiResponse;
 import com.blog.blog.entity.UserEntity.UserPrincipal;
-import com.blog.blog.service.SubscriptionService.SubscriptionService;
+import com.blog.blog.service.serviceBean.SubscriptionService.SubscriptionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

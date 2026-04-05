@@ -1,14 +1,10 @@
 package com.blog.blog.entity.UserEntity;
 
 import com.blog.blog.constants.UserConstants.UserProfileStatus;
+import com.blog.blog.entity.AuditEntity.AuditEntity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-import java.time.Instant;
-import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -21,8 +17,7 @@ import java.util.Set;
         @Index(name = "idx_user_username", columnList = "username")
     }
 )
-@EntityListeners(AuditingEntityListener.class)
-public class User {
+public class User extends AuditEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long userId;
@@ -38,12 +33,6 @@ public class User {
     private String email;
     @Column(nullable = false)
     private String password;
-    @CreatedDate
-    @Column(nullable = false,updatable = false)
-    private Date createdAt;
-    @LastModifiedDate
-    @Column(nullable = false)
-    private Date updatedAt;
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
             name = "user_roles",

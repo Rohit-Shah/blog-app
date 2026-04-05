@@ -1,5 +1,6 @@
 package com.blog.blog.DTO.PostRequest;
 
+import com.blog.blog.constants.PostContants.PostStatus;
 import lombok.Data;
 
 import java.time.Instant;
@@ -8,16 +9,12 @@ import java.time.Instant;
 public class PostDTO {
     private String postId;
     private String title;
-    private String excerpt;
     private String content;
+    private String excerpt;
     private String imageUrl;
-    private String authorId;
-    private String authorName;
-    private Instant createdAt;
-    private Instant updatedAt;
-    private Long likeCount;
-    private Long dislikeCount;
-    private boolean likedByUser;
-    private boolean dislikedByUser;
-    private Long viewCount;
+    private PostStatus postStatus;
+    private String category;
+    private String metaDescription;
+    private String userId;
+    private String userName;
 }
