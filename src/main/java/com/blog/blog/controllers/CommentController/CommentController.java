@@ -2,10 +2,10 @@ package com.blog.blog.controllers.CommentController;
 
 import com.blog.blog.DTO.CommentReqeust.CommentDTO;
 import com.blog.blog.Exceptions.CommentNotFoundException;
-import com.blog.blog.Exceptions.PostNotFoundException;
+import com.blog.blog.Exceptions.PostExceptions.PostNotFoundException;
 import com.blog.blog.Response.ApiResponse;
 import com.blog.blog.entity.UserEntity.UserPrincipal;
-import com.blog.blog.service.CommentService.CommentService;
+import com.blog.blog.service.serviceBean.CommentService.CommentService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -16,15 +16,15 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/post/comment")
+@RequestMapping("/comment")
 @Slf4j
 public class CommentController {
     @Autowired
     private CommentService commentService;
 
-    @PostMapping("/{postId}/add-comment")
+    @PostMapping("/add-comment/{postId}")
     public ResponseEntity<ApiResponse> addCommentOnPost(@AuthenticationPrincipal UserPrincipal userPrincipal,
-                                                        @ModelAttribute CommentDTO commentDTO,
+                                                        @RequestBody CommentDTO commentDTO,
                                                         @PathVariable Long postId) {
         try {
             CommentDTO commentResponse = commentService.addComment(userPrincipal, commentDTO, postId);
@@ -39,11 +39,11 @@ public class CommentController {
         }
     }
 
-    @GetMapping("/{postId}/all-comments")
-    public ResponseEntity<ApiResponse> getAllPostComments(@AuthenticationPrincipal UserPrincipal userPrincipal, @ModelAttribute CommentDTO commentDTO, @PathVariable Long postId) {
+    @GetMapping("/get-comments/{postId}")
+    public ResponseEntity<ApiResponse> getAllPostComments(@AuthenticationPrincipal UserPrincipal userPrincipal, @PathVariable Long postId) {
         try {
-            List<CommentDTO> commentResponse = commentService.getAllPostComments(userPrincipal, commentDTO, postId);
-            ApiResponse successResponse = new ApiResponse("Comment added", true, commentResponse);
+            List<CommentDTO> commentResponse = commentService.getAllPostComments(userPrincipal, postId);
+            ApiResponse successResponse = new ApiResponse("Post Comments", true, commentResponse);
             return ResponseEntity.status(HttpStatus.OK).body(successResponse);
         } catch (PostNotFoundException e) {
             ApiResponse errorResponse = new ApiResponse("No such post found", false, null);
@@ -54,7 +54,7 @@ public class CommentController {
         }
     }
 
-    @DeleteMapping("{postId}/{commentId}")
+    @DeleteMapping("/delete-comment/{postId}/{commentId}")
     public ResponseEntity<ApiResponse> deleteCommentOnPost(@AuthenticationPrincipal UserPrincipal userPrincipal,
                                                            @PathVariable Long postId,
                                                            @PathVariable Long commentId) {

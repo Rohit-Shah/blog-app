@@ -1,6 +1,6 @@
 package com.blog.blog.scheduler.BlogDigest;
 
-import com.blog.blog.service.MessagingService.SchedulerService.DigestService;
+import com.blog.blog.service.serviceBean.MessagingService.SchedulerService.DigestService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;

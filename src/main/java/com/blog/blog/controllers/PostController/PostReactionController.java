@@ -1,10 +1,10 @@
 package com.blog.blog.controllers.PostController;
 
 import com.blog.blog.DTO.PostRequest.PostReactionDTO;
-import com.blog.blog.Exceptions.PostNotFoundException;
+import com.blog.blog.Exceptions.PostExceptions.PostNotFoundException;
 import com.blog.blog.Response.ApiResponse;
 import com.blog.blog.entity.UserEntity.UserPrincipal;
-import com.blog.blog.service.PostService.PostReactionService;
+import com.blog.blog.service.serviceBean.PostServiceBean.PostReactionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

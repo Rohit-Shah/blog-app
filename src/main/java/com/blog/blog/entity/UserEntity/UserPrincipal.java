@@ -1,6 +1,6 @@
 package com.blog.blog.entity.UserEntity;
 
-import com.blog.blog.serviceBean.AuthService.LoginAttemptService;
+import com.blog.blog.service.serviceBean.AuthService.LoginAttemptService;
 import lombok.Getter;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;

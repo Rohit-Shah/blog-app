@@ -1,79 +1,18 @@
 package com.blog.blog.service.AuthService;
 
-import com.blog.blog.Exceptions.JWTValidationException;
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.io.Decoders;
-import io.jsonwebtoken.security.Keys;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.stereotype.Component;
+import com.blog.blog.entity.UserEntity.Role;
+import com.blog.blog.entity.UserEntity.User;
 
-import javax.crypto.SecretKey;
 import java.util.Date;
-import java.util.function.Function;
+import java.util.List;
 
-@Component
-public class JWTService {
-
-    private static final String SECRET_KEY = "9382E94A5FAAEFF4812B7D647214C9382E94A5FAAEFF4812B7D647214C";
-    private static final long ACCESS_TOKEN_EXPIRATION = 15 * 60 * 1000; // 15 mins
-    private static final long REFRESH_TOKEN_EXPIRATION = 7 * 24 * 60 * 60 * 1000; // 7 days
-
-    public String extractUsername(String token) {
-        return extractClaims(token, Claims::getSubject);
-    }
-
-    private <T> T extractClaims(String token, Function<Claims,T> claimsTFunction){
-        Claims claims = extractAllClaims(token);
-        return claimsTFunction.apply(claims);
-    }
-
-    private Claims extractAllClaims(String token){
-        try{
-            return Jwts.parser()
-                    .verifyWith(getSigningKey())
-                    .build()
-                    .parseSignedClaims(token)
-                    .getPayload();
-
-        }catch (Exception e){
-            throw new JWTValidationException(e.getMessage());
-        }
-    }
-
-    public boolean validateToken(String token, UserDetails userDetails) {
-        String username = extractUsername(token);
-        return username.equals(userDetails.getUsername()) && !isTokenExpired(token);
-    }
-
-    private boolean isTokenExpired(String token){
-        return extractExpirationDate(token).before(new Date());
-    }
-
-    private Date extractExpirationDate(String token){
-        return extractClaims(token,Claims::getExpiration);
-    }
-
-    public String generateAccessToken(String username) {
-        return generateToken(username,ACCESS_TOKEN_EXPIRATION);
-    }
-
-    public String generateRefreshToken(String username) {
-        return generateToken(username,REFRESH_TOKEN_EXPIRATION);
-    }
-
-    private String generateToken(String username,long expirationTime){
-        return Jwts.builder()
-                .subject(username)
-                .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date( System.currentTimeMillis() + expirationTime))
-                .signWith(getSigningKey(), SignatureAlgorithm.HS256).compact();
-    }
-
-    private SecretKey getSigningKey(){
-        byte[] keyBytes = io.jsonwebtoken.io.Decoders.BASE64.decode(SECRET_KEY);
-        return Keys.hmacShaKeyFor(keyBytes);
-    }
-
+public interface JWTService {
+    String generateAccessToken(User user, Date expirationTime);
+    String generateRefreshToken(User user, Date expirationTime);
+    boolean validateToken(String token,String tokenType);
+    String extractUsername(String token);
+    Long extractUserId(String token);
+    String extractTokenType(String token);
+    int extractTokenVersion(String token);
+    List<String> extractRoles(String token);
 }

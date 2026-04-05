@@ -1,9 +1,8 @@
 package com.blog.blog.ExceptionHandler;
 
 import com.blog.blog.Exceptions.CommentNotFoundException;
-import com.blog.blog.Exceptions.PostNotFoundException;
+import com.blog.blog.Exceptions.PostExceptions.PostNotFoundException;
 import com.blog.blog.Response.ApiResponse;
-import com.cloudinary.Api;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.LockedException;
