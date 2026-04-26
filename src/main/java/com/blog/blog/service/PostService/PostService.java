@@ -1,9 +1,13 @@
 package com.blog.blog.service.PostService;
 
 import com.blog.blog.DTO.PostRequest.PostDTO;
+import com.blog.blog.DTO.PostRequest.PostSearchCriteria;
+import com.blog.blog.Response.CursorResponse;
+import com.blog.blog.Response.PageResponse;
 import com.blog.blog.entity.UserEntity.UserPrincipal;
 import org.springframework.data.domain.Page;
 
+import java.util.List;
 
 
 public interface PostService {
@@ -17,6 +21,7 @@ public interface PostService {
 
     //get
     PostDTO getPostById(Long postId);
-    Page<PostDTO> getAllPosts(int page, int size);
+    PostDTO getUserPostById(Long userId,Long postId);
+    CursorResponse<PostDTO> getAllPosts(int size, PostSearchCriteria criteria);
     PostDTO getPostBySlug(String slug);
 }

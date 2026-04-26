@@ -6,6 +6,7 @@ import lombok.Data;
 public class CommentDTO {
     private Long commentId;
     private String content;
+    private Long parentCommentId;
     private String authorName;
     private String authorId;
     private Long postId;
