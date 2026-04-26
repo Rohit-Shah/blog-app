@@ -8,16 +8,16 @@ import com.blog.blog.constants.UserConstants.UserProfileStatus;
 import com.blog.blog.entity.AuthEntity.RefreshToken;
 import com.blog.blog.entity.UserEntity.User;
 import com.blog.blog.entity.UserEntity.UserPrincipal;
+import com.blog.blog.mapper.AuthMapper.AuthMapper;
 import com.blog.blog.mapper.UserMapper.UserMapper;
-import com.blog.blog.repository.AuthRepository.RefreshTokenRepository;
 import com.blog.blog.repository.UserRepository.RoleRepository;
 import com.blog.blog.service.AuthService.AuthService;
 import com.blog.blog.service.AuthService.JWTService;
+import com.blog.blog.service.AuthService.RefreshTokenService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.*;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,8 +34,9 @@ public class AuthServiceBean implements AuthService {
     private final RoleRepository roleRepository;
     private final CustomUserDetailsService userDetailsService;
     private final LoginAttemptService loginAttemptService;
-    private final RefreshTokenRepository refreshTokenRepository;
     private final UserMapper mapper;
+    private final AuthMapper authMapper;
+    private final RefreshTokenService refreshTokenService;
 
 
     @Transactional
@@ -56,25 +57,14 @@ public class AuthServiceBean implements AuthService {
             }
             Date refreshTokenExpiryTime = new Date(System.currentTimeMillis() + AuthConstants.REFRESH_TOKEN_EXPIRATION);
             Date accessTokenExpiryTime = new Date(System.currentTimeMillis() + AuthConstants.ACCESS_TOKEN_EXPIRATION);
-            if(authUser.isAuthenticated()){
-                accessToken = jwtService.generateAccessToken(user,accessTokenExpiryTime);
-                refreshToken = jwtService.generateRefreshToken(user,refreshTokenExpiryTime);
-                AuthResponse loggedInUser = new AuthResponse();
-                loggedInUser.setAccessToken(accessToken);
-                loggedInUser.setRefreshToken(refreshToken);
-                UserDTO userDTO = mapper.toDTO(user);
-                loggedInUser.setUser(userDTO);
-                refreshTokenRepository.revokeAllTokens(user.getUserId());
-                RefreshToken refreshTokenData = new RefreshToken();
-                refreshTokenData.setUser(user);
-                refreshTokenData.setToken(refreshToken);
-                refreshTokenData.setExpiresAt(refreshTokenExpiryTime);
-                refreshTokenData.setIpAddress(ipAddress);
-                refreshTokenData.setUserAgent(userAgent);
-                refreshTokenRepository.save(refreshTokenData);
-                loginAttemptService.loginSucceed(user.getUsername());
-                return loggedInUser;
-            }
+            refreshTokenService.revokeAllTokens(user.getUserId());
+            accessToken = jwtService.generateAccessToken(user,accessTokenExpiryTime);
+            refreshToken = jwtService.generateRefreshToken(user,refreshTokenExpiryTime);
+            UserDTO userDTO = mapper.toDTO(user);
+            refreshTokenService.saveTokenData(user,refreshToken,refreshTokenExpiryTime,ipAddress,userAgent);
+            loginAttemptService.loginSucceed(user.getUsername());
+            return authMapper.toAuthResponse(userDTO,accessToken,refreshToken);
+
         }catch (LockedException e){
             long lastAttemptTime = loginAttemptService.getUserLastLoginDetails(username);
             long timeRemaining = 15;
@@ -87,7 +77,6 @@ public class AuthServiceBean implements AuthService {
             loginAttemptService.loginFailed(userData.getUsername());
             throw new AuthenticationException("Invalid credentials");
         }
-        throw new UsernameNotFoundException("No user found for the given username");
     }
 
     private String getClientIPAddress(HttpServletRequest httpServletRequest){
@@ -98,13 +87,12 @@ public class AuthServiceBean implements AuthService {
         return httpServletRequest.getRemoteAddr();
     }
 
-    public AuthResponse logout(String refreshToken) {
-        Optional<RefreshToken> currToken = refreshTokenRepository.findByToken(refreshToken);
-        if(currToken.isEmpty()) return new AuthResponse();
+    public void logout(String refreshToken) {
+        Optional<RefreshToken> currToken = refreshTokenService.getTokenDetails(refreshToken);
+        if(currToken.isEmpty()) return;
         RefreshToken token = currToken.get();
         token.setRevoked(true);
-        refreshTokenRepository.save(token);
-        return new AuthResponse();
+        refreshTokenService.revokeToken(token);
     }
 
 }
